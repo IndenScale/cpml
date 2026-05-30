@@ -1,0 +1,40 @@
+# CPML dependency policy
+# See: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+all-features = true
+
+[advisories]
+vulnerability = "workspace"
+unmaintained = "workspace"
+unsound = "workspace"
+yanked = "deny"
+notice = "warn"
+ignore = []
+
+[licenses]
+unlicensed = "deny"
+allow-osi-fsf-free = "either"
+confidence-threshold = 0.8
+copyleft = "deny"
+
+exceptions = [
+    # Each license exception must have a crate name and a reason
+]
+
+[[licenses.clarify]]
+name = "parry3d-f64"
+expression = "Apache-2.0"
+license-files = []
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []

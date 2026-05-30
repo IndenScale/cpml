@@ -10,7 +10,10 @@ cargo clippy --all-targets -- -D warnings
 echo "==> cargo test"
 cargo test
 
-echo "==> cargo build"
+echo "==> cargo build (-D warnings)"
 RUSTFLAGS="-D warnings" cargo build
+
+echo "==> cargo deny check"
+cargo deny check
 
 echo "All checks passed ✓"
