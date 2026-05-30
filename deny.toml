@@ -8,8 +8,8 @@ all-features = true
 vulnerability = "workspace"
 unmaintained = "workspace"
 unsound = "workspace"
-yanked = "workspace"
-notice = "workspace"
+yanked = "deny"
+notice = "warn"
 ignore = []
 
 [licenses]
