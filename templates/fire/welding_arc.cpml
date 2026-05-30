@@ -1,0 +1,82 @@
+# Activity Template: welding_arc
+# Risk domain: fire, fall
+# Description: 电弧焊接 — 固有火源 + 熔渣坠落 + 可燃气体敏感 + 登高风险 + 焊工需求 + 作业净空
+#
+# Parameters to fill in:
+#   {{id}}              — unique activity ID
+#   {{timespan_start}}  — ISO 8601 start datetime
+#   {{timespan_end}}    — ISO 8601 end datetime
+#   {{work_point}}      — geometry ref for the weld point (sphere, 0.5m radius recommended)
+#   {{work_envelope}}   — geometry ref for the work clearance zone (cuboid)
+#   {{fall_zone}}       — geometry ref for the fall hazard zone (sphere, 3m radius recommended)
+#
+# Required fields in the parent .cpml file:
+#   - fire_load (scalar, operator: max)
+#   - combustible_gas (scalar, operator: max)
+#   - occupancy (occupancy)
+#   - certified_welders (capacity)  — if using welder demand
+
+activity:
+  id: "{{id}}"
+  name: "钢结构电弧焊接"
+  timespan:
+    start: "{{timespan_start}}"
+    end: "{{timespan_end}}"
+
+  # 空间占用
+  collision:
+    hard:
+      geometry: "{{work_envelope}}"
+
+  # 不可剥离的资源需求
+  demands:
+    - field: "certified_welders"
+      geometry: "{{work_envelope}}"
+      amount: 2
+    - field: "height_access_equipment"
+      geometry: "{{work_envelope}}"
+      amount: 1
+
+  # 不可剥离的固有风险投影
+  projections:
+    # 电弧火源 — 小球状，靠近焊点
+    - name: "arc_fire_source"
+      field: "fire_load"
+      geometry: "{{work_point}}"
+      value: 0.6
+
+    # 熔渣坠落火源 — 圆柱形，焊点下方
+    - name: "slag_fire_source"
+      field: "fire_load"
+      geometry: "{{work_envelope}}"
+      value: 0.4
+
+    # 坠落风险区 — soft occupancy，不可消除
+    - name: "fall_risk_zone"
+      field: "occupancy"
+      geometry: "{{fall_zone}}"
+      kind: soft
+
+  # 不可剥离的固有探针
+  probes:
+    # 可燃气体浓度敏感 — 封闭空间喷漆/涂装产生的 VOC 或燃气泄漏
+    - name: "combustible_gas_check"
+      field: "combustible_gas"
+      geometry: "{{work_envelope}}"
+      lte: 0.3
+      diagnostic_level: warning
+
+    # 作业净空 — 必须满足
+    - name: "clearance_check"
+      field: "occupancy"
+      geometry: "{{work_envelope}}"
+      empty: true
+      diagnostic_level: error
+
+  # 不可消除的登高交底提醒 — info 级别，应用层可过滤
+  structures:
+    - name: "height_work_reminder"
+      field: "occupancy"
+      geometry: "{{fall_zone}}"
+      kind: soft
+      diagnostic_level: info

@@ -1,0 +1,64 @@
+version: "1.0"
+name: "Occlusion Culling Demo"
+description: >
+  Two tower cranes with overlapping swing zones, separated by a wall barrier.
+  The wall should block soft collision warnings between the cranes.
+
+fields:
+  - name: "occupancy"
+    type: occupancy
+
+geometries:
+  - id: "crane_A_body"
+    cuboid:
+      half_extents: [2.0, 2.0, 25.0]
+    pose:
+      position: [2.5, 2.5, 25.0]
+
+  - id: "crane_A_swing"
+    sphere:
+      radius: 8.0
+    pose:
+      position: [2.5, 2.5, 25.0]
+
+  - id: "crane_B_body"
+    cuboid:
+      half_extents: [2.0, 2.0, 25.0]
+    pose:
+      position: [14.5, 2.5, 25.0]
+
+  - id: "crane_B_swing"
+    sphere:
+      radius: 8.0
+    pose:
+      position: [14.5, 2.5, 25.0]
+
+  - id: "barrier_wall"
+    cuboid:
+      half_extents: [0.5, 10.0, 20.0]
+    pose:
+      position: [8.5, 2.5, 20.0]
+
+barriers:
+  - geometry: "barrier_wall"
+
+activities:
+  - id: "crane_A"
+    timespan:
+      start: "2026-01-10"
+      end: "2026-01-20"
+    collision:
+      hard:
+        geometry: "crane_A_body"
+      soft:
+        geometry: "crane_A_swing"
+
+  - id: "crane_B"
+    timespan:
+      start: "2026-01-10"
+      end: "2026-01-20"
+    collision:
+      hard:
+        geometry: "crane_B_body"
+      soft:
+        geometry: "crane_B_swing"

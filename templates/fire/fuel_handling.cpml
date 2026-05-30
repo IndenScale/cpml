@@ -1,0 +1,73 @@
+# Activity Template: fuel_handling
+# Risk domain: fire
+# Description: 燃油操作 — fire_load 注入 + 围堰 containment + 火源敏感 + 消防能力需求
+#
+# Parameters to fill in:
+#   {{id}}                  — unique activity ID
+#   {{timespan_start}}      — ISO 8601 start datetime
+#   {{timespan_end}}        — ISO 8601 end datetime
+#   {{fuel_zone}}           — geometry ref for the fuel handling area (cuboid)
+#   {{fuel_risk_zone}}      — geometry ref for the fire risk radius (sphere, 15m typical)
+#   {{containment}}         — geometry ref for the spill containment bund (cuboid)
+#
+# Required fields in the parent .cpml file:
+#   - fire_load (scalar, operator: max)
+#   - occupancy (occupancy)
+#   - fire_response_capability (capacity)
+
+activity:
+  id: "{{id}}"
+  name: "燃油操作"
+  timespan:
+    start: "{{timespan_start}}"
+    end: "{{timespan_end}}"
+
+  # 空间占用 — 燃油操作区
+  collision:
+    hard:
+      geometry: "{{fuel_zone}}"
+
+  # 消防响应能力需求
+  demands:
+    - field: "fire_response_capability"
+      geometry: "{{fuel_risk_zone}}"
+      amount: 1
+
+  # 不可剥离的固有风险投影
+  projections:
+    # 火险注入 — 燃油操作区本身
+    - name: "fuel_fire_load"
+      field: "fire_load"
+      geometry: "{{fuel_zone}}"
+      value: 0.8
+
+    # 火险风险半径 — soft occupancy 包围燃油区
+    - name: "fuel_fire_risk"
+      field: "occupancy"
+      geometry: "{{fuel_risk_zone}}"
+      kind: soft
+
+  # 不可剥离的固有探针
+  probes:
+    # 围堰就位检查 — containment 必须在作业开始前通过 presence 场确认存在
+    - name: "containment_in_place"
+      field: "containment_status"
+      geometry: "{{fuel_zone}}"
+      present:
+        key: "{{containment}}"
+        type: "containment"
+      diagnostic_level: error
+
+    # 火源敏感 — 周边不应有明火作业（fire_load 叠加后不超过阈值）
+    - name: "ignition_source_check"
+      field: "fire_load"
+      geometry: "{{fuel_risk_zone}}"
+      lte: 1.2
+      diagnostic_level: error
+
+    # 消防通道 — 风险区内必须保持通畅
+    - name: "fire_access_check"
+      field: "occupancy"
+      geometry: "{{fuel_risk_zone}}"
+      empty: true
+      diagnostic_level: warning

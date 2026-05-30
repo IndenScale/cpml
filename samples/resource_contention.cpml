@@ -1,0 +1,92 @@
+version: "0.1"
+name: "Resource Contention Demo"
+description: "Three construction activities drawing from limited power supply capacity."
+
+fields:
+  - name: "power_supply"
+    type: capacity
+
+geometries:
+  - id: "site_wide"
+    pose:
+      position: [0, 0, 25]
+    cuboid:
+      half_extents: [100, 100, 75]
+
+  - id: "zone_A"
+    pose:
+      position: [15, 15, 10]
+    cuboid:
+      half_extents: [15, 15, 10]
+
+  - id: "zone_B"
+    pose:
+      position: [35, 35, 10]
+    cuboid:
+      half_extents: [15, 15, 10]
+
+  - id: "zone_C"
+    pose:
+      position: [55, 55, 10]
+    cuboid:
+      half_extents: [15, 15, 10]
+
+activities:
+  - id: "power_generator"
+    name: "Power Supply"
+    timespan:
+      start: "2026-01-01"
+      end: "2026-01-30"
+    projections:
+      - name: "supply_power"
+        field: "power_supply"
+        geometry: "site_wide"
+        value: 500.0
+
+  - id: "excavation_A"
+    name: "Excavation Zone A"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-15"
+    probes:
+      - name: "need_power"
+        field: "power_supply"
+        geometry: "zone_A"
+        gte: 150.0
+    projections:
+      - name: "consume_power"
+        field: "power_supply"
+        geometry: "zone_A"
+        value: -150.0
+
+  - id: "excavation_B"
+    name: "Excavation Zone B"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-15"
+    probes:
+      - name: "need_power"
+        field: "power_supply"
+        geometry: "zone_B"
+        gte: 150.0
+    projections:
+      - name: "consume_power"
+        field: "power_supply"
+        geometry: "zone_B"
+        value: -200.0
+
+  - id: "excavation_C"
+    name: "Excavation Zone C"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-15"
+    probes:
+      - name: "need_power"
+        field: "power_supply"
+        geometry: "zone_C"
+        gte: 150.0
+    projections:
+      - name: "consume_power"
+        field: "power_supply"
+        geometry: "zone_C"
+        value: -180.0

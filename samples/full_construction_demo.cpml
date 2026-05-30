@@ -1,0 +1,358 @@
+version: "1.0"
+name: "Full Construction Site Demo"
+description: >
+  Comprehensive POC demonstration of all CPML capabilities in a single
+  construction scenario: two tower cranes with collision and occlusion
+  (occupancy), concrete curing (scalar progression), permit approval
+  (presence), power pool and site access (capacity), material flow
+  monitoring (rate), L-shaped building geometry (boolean union), FS/SS
+  dependencies, confidence-weighted subcontractor data, backpressure
+  detection (Lte), and sub-day precision concrete pour.
+
+# ── Field Declarations ──
+fields:
+  - name: "crane_occupancy"
+    type: occupancy
+
+  - name: "concrete_strength"
+    type: scalar
+    operator: max
+
+  - name: "permits"
+    type: presence
+
+  - name: "power_supply"
+    type: capacity
+
+  - name: "site_access"
+    type: capacity
+
+  - name: "material_flow"
+    type: rate
+    window_size: 3
+
+# ── Geometry Definitions ──
+geometries:
+  # Tower cranes
+  - id: "crane_A_body"
+    pose: { position: [2.5, 2.5, 15] }
+    cuboid: { half_extents: [2.5, 2.5, 15] }
+
+  - id: "crane_A_swing"
+    pose: { position: [2.5, 2.5, 25] }
+    sphere: { radius: 8.0 }
+
+  - id: "crane_B_body"
+    pose: { position: [14.5, 2.5, 15] }
+    cuboid: { half_extents: [2.5, 2.5, 15] }
+
+  - id: "crane_B_swing"
+    pose: { position: [14.5, 2.5, 25] }
+    sphere: { radius: 8.0 }
+
+  # Barrier wall between cranes (blocks soft collision, not hard)
+  - id: "barrier_wall"
+    pose: { position: [7.5, 2.5, 20] }
+    cuboid: { half_extents: [0.3, 5.0, 15] }
+
+  # L-shaped building using boolean union geometry
+  - id: "L_building"
+    pose: { position: [50, 30, 5] }
+    union:
+      - cuboid: { half_extents: [20, 10, 5] }
+      - cuboid: { half_extents: [10, 20, 5] }
+
+  # Concrete foundation
+  - id: "foundation"
+    pose: { position: [50, 30, -2.5] }
+    cuboid: { half_extents: [15, 15, 2.5] }
+
+  # Wall with opening (subtract)
+  - id: "retaining_wall_with_gate"
+    pose: { position: [80, 20, 5] }
+    subtract:
+      a:
+        cuboid: { half_extents: [10, 0.5, 5] }
+      b:
+        cuboid: { half_extents: [2, 1, 2.5] }
+
+  # Site-wide zones
+  - id: "site_wide"
+    cuboid: { half_extents: [100, 100, 75] }
+    pose: { position: [0, 0, 25] }
+
+  - id: "zone_A"
+    cuboid: { half_extents: [15, 15, 10] }
+    pose: { position: [15, 15, 10] }
+
+  - id: "zone_B"
+    cuboid: { half_extents: [15, 15, 10] }
+    pose: { position: [35, 35, 10] }
+
+  - id: "main_access"
+    cuboid: { half_extents: [5, 30, 10] }
+    pose: { position: [50, 0, 10] }
+
+  - id: "pipe_A"
+    cuboid: { half_extents: [3, 3, 20] }
+    pose: { position: [10, 50, 10] }
+
+  - id: "pipe_B"
+    cuboid: { half_extents: [3, 3, 20] }
+    pose: { position: [40, 50, 10] }
+
+# ── Barrier Declaration ──
+barriers:
+  - geometry: "barrier_wall"
+
+# ── Activities ──
+activities:
+  # Phase 1: Permits and Site Setup
+  - id: "permit_approval"
+    name: "Excavation Permit Approval"
+    timespan:
+      start: "2026-03-01"
+      end: "2026-03-05"
+    projections:
+      - field: "permits"
+        geometry: "site_wide"
+        record:
+          key: "excavation_permit_A"
+          type: "permit"
+          attributes: { zone: "A", status: "approved" }
+          valid_until: "2026-06-30"
+
+  - id: "power_setup"
+    name: "Power Supply Commissioning"
+    timespan:
+      start: "2026-03-01"
+      end: "2026-03-30"
+    structures:
+      - field: "power_supply"
+        geometry: "site_wide"
+        value: 500.0
+
+  # Phase 2: Foundation excavation (requires permit, uses power)
+  - id: "excavation_A"
+    name: "Foundation Excavation Zone A"
+    timespan:
+      start: "2026-03-06"
+      end: "2026-03-10"
+    depends_on:
+      - activity_id: "permit_approval"
+        kind: FS
+    probes:
+      - field: "permits"
+        geometry: "zone_A"
+        present:
+          key: "excavation_permit_A"
+          type: "permit"
+          attributes: { status: "approved" }
+        name: "permit_check"
+      - field: "power_supply"
+        geometry: "zone_A"
+        gte: 100.0
+        name: "power_check"
+    projections:
+      - field: "power_supply"
+        geometry: "zone_A"
+        value: -150.0
+
+  # Phase 3: Rebar and concrete pour (scalar field, sub-day precision)
+  - id: "rebar_install"
+    name: "Rebar Installation"
+    timespan:
+      start: "2026-03-10"
+      end: "2026-03-12"
+    depends_on:
+      - activity_id: "excavation_A"
+        kind: FS
+    structures:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.0
+        operator: replace
+
+  - id: "concrete_pour"
+    name: "Concrete Pouring (sub-day)"
+    timespan:
+      start: "2026-03-12T08:00:00"
+      end: "2026-03-12T17:00:00"
+    depends_on:
+      - activity_id: "rebar_install"
+        kind: FS
+        lag_days: 0
+    projections:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.2
+        operator: max
+
+  # Phase 4: Concrete curing (scalar progression)
+  - id: "curing_week1"
+    name: "Curing Week 1"
+    timespan:
+      start: "2026-03-13"
+      end: "2026-03-20"
+    depends_on:
+      - activity_id: "concrete_pour"
+        kind: FS
+    projections:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.45
+        operator: max
+
+  - id: "curing_week2"
+    name: "Curing Week 2"
+    timespan:
+      start: "2026-03-20"
+      end: "2026-03-27"
+    depends_on:
+      - activity_id: "curing_week1"
+        kind: FS
+    projections:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.8
+        operator: max
+
+  - id: "curing_week3"
+    name: "Curing Week 3"
+    timespan:
+      start: "2026-03-27"
+      end: "2026-04-03"
+    depends_on:
+      - activity_id: "curing_week2"
+        kind: FS
+    projections:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        value: 1.0
+        operator: max
+
+  # Phase 5: Tower crane work (occupancy collision + occlusion)
+  - id: "crane_A"
+    name: "Tower Crane A"
+    timespan:
+      start: "2026-03-12"
+      end: "2026-03-20"
+    depends_on:
+      - activity_id: "permit_approval"
+        kind: FS
+    collision:
+      hard:
+        geometry: "crane_A_body"
+      soft:
+        geometry: "crane_A_swing"
+
+  - id: "crane_B"
+    name: "Tower Crane B"
+    timespan:
+      start: "2026-03-12"
+      end: "2026-03-20"
+    collision:
+      hard:
+        geometry: "crane_B_body"
+      soft:
+        geometry: "crane_B_swing"
+
+  # Phase 6: Column construction (checks concrete strength)
+  - id: "column_construction"
+    name: "Column Formwork and Pour"
+    timespan:
+      start: "2026-03-28"
+      end: "2026-04-05"
+    depends_on:
+      - activity_id: "curing_week2"
+        kind: FS
+    probes:
+      - field: "concrete_strength"
+        geometry: "foundation"
+        gte: 0.7
+        diagnostic_level: error
+        name: "strength_check"
+
+  # Phase 7: Access control (capacity field)
+  - id: "access_provider"
+    name: "Site Access Provisioning"
+    timespan:
+      start: "2026-03-01"
+      end: "2026-04-05"
+    projections:
+      - field: "site_access"
+        geometry: "main_access"
+        value: 1.0
+
+  # Phase 8: Material delivery (capacity field, rate monitoring)
+  - id: "material_delivery_A"
+    name: "Material Delivery via Access Road"
+    timespan:
+      start: "2026-03-13"
+      end: "2026-03-14"
+    probes:
+      - field: "site_access"
+        geometry: "main_access"
+        gte: 1.0
+        name: "access_check"
+    projections:
+      - field: "site_access"
+        geometry: "main_access"
+        value: -1.0
+      - field: "material_flow"
+        geometry: "pipe_A"
+        value: 80.0
+
+  - id: "material_delivery_B"
+    name: "Material Delivery via Access Road (conflict)"
+    timespan:
+      start: "2026-03-13"
+      end: "2026-03-14"
+    probes:
+      - field: "site_access"
+        geometry: "main_access"
+        gte: 1.0
+        name: "access_check"
+    projections:
+      - field: "site_access"
+        geometry: "main_access"
+        value: -1.0
+      - field: "material_flow"
+        geometry: "pipe_A"
+        value: 80.0
+
+  # Phase 8: Rate monitoring with Lte (backpressure detection)
+  - id: "fast_supplier"
+    name: "Fast Concrete Supplier"
+    timespan:
+      start: "2026-03-13"
+      end: "2026-03-14"
+    projections:
+      - field: "material_flow"
+        geometry: "pipe_B"
+        value: 200.0
+    # Low-confidence subcontractor data
+    structures:
+      - field: "power_supply"
+        geometry: "zone_B"
+        value: 100.0
+        confidence: 0.3
+
+  - id: "downstream_consumer"
+    name: "Downstream Placement Team"
+    timespan:
+      start: "2026-03-13"
+      end: "2026-03-14"
+    depends_on:
+      - activity_id: "fast_supplier"
+        kind: SS
+    probes:
+      - field: "material_flow"
+        geometry: "pipe_B"
+        lte: 150.0
+        diagnostic_level: warning
+        name: "backpressure_check"
+      - field: "power_supply"
+        geometry: "zone_B"
+        gte: 200.0
+        name: "power_adequacy_check"

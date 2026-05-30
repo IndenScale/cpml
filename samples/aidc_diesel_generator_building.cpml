@@ -1,0 +1,581 @@
+version: "1.0"
+name: "AIDC 备用柴发小楼 — 施工过程模型"
+description: >
+  混凝土底座 + 钢结构混合建筑。2 层，8 个标准集装箱柴发方舱
+  + 1 个变电方舱。配套燃油储罐、消防用水、配电。北侧 & 西侧
+  道路在第 6/7 周分别开挖封闭。东侧设材料堆场。管道接入西侧
+  综合管廊。时间精度：半天（上午 08:00-12:00，下午 13:00-17:00）。
+
+# ═══════════════════════════════════════════════════════════════
+# 场定义
+# ═══════════════════════════════════════════════════════════════
+fields:
+  # 空间碰撞场：硬碰撞（物理碰撞）+ 软碰撞（安全/风险区域）
+  - name: "occupancy"
+    type: occupancy
+
+  # 混凝土强度递进（Scalar, max 算子：取历史最大值）
+  - name: "concrete_strength"
+    type: scalar
+    operator: max
+
+  # 钢结构完成度
+  - name: "steel_completion"
+    type: scalar
+    operator: max
+
+  # 东侧堆场材料库存（正值 = 库存增加，负值 = 消耗）
+  - name: "east_stockpile"
+    type: capacity
+
+  # 道路通行容量（1 = 可通行，0 = 封闭）
+  - name: "road_access"
+    type: capacity
+
+  # 管廊接口容量（可接入点数）
+  - name: "utility_tunnel_capacity"
+    type: capacity
+
+  # 在场记录：柴发方舱就位状态 / 许可 / 检查通过
+  - name: "equipment_status"
+    type: presence
+
+  # 火灾风险标量场（max 算子）
+  - name: "fire_load"
+    type: scalar
+    operator: max
+
+  # 施工进度速率监控
+  - name: "work_progress_rate"
+    type: rate
+    window_size: 5
+
+# ═══════════════════════════════════════════════════════════════
+# 几何定义（单位：米，坐标系原点 = 柴发楼西南角地面）
+# ═══════════════════════════════════════════════════════════════
+geometries:
+  # ── 柴发小楼主体 ──
+  # 30m (东西) × 15m (南北) × 10m 高 (2层)
+  - id: "dg_building_footprint"
+    pose: { position: [15, 7.5, 5] }
+    cuboid: { half_extents: [15, 7.5, 5] }
+
+  # 混凝土底座（筏板基础，比楼体大一圈，深 2m）
+  - id: "concrete_raft"
+    pose: { position: [15, 7.5, -1] }
+    cuboid: { half_extents: [16.5, 9, 1] }
+
+  # 单个柴发方舱（标准 20ft 集装箱 ≈ 6.1m × 2.44m × 2.59m）
+  - id: "dg_unit"
+    pose: { position: [0, 0, 1.5] }
+    cuboid: { half_extents: [3.05, 1.22, 1.3] }
+
+  # 变电方舱
+  - id: "transformer_unit"
+    pose: { position: [0, 0, 1.5] }
+    cuboid: { half_extents: [3.05, 1.22, 1.3] }
+
+  # 燃油储罐（卧式圆柱罐，置于地面）
+  - id: "fuel_tank"
+    pose: { position: [0, 0, 1.25] }
+    cylinder: { radius: 1.25, half_height: 3.0 }
+
+  # 消防水池（地下，长方体）
+  - id: "fire_water_tank"
+    pose: { position: [0, 0, -1.5] }
+    cuboid: { half_extents: [3, 2, 1.5] }
+
+  # ── 道路 ──
+  # 北侧道路（东西向，8m 宽，连接主楼和堆料场）
+  - id: "north_road"
+    pose: { position: [15, 26.5, 0] }
+    cuboid: { half_extents: [50, 4, 0.5] }
+
+  # 西侧道路（南北向，8m 宽，与 AIDC 共用）
+  - id: "west_road"
+    pose: { position: [-21, 7.5, 0] }
+    cuboid: { half_extents: [4, 25, 0.5] }
+
+  # ── 综合管廊（西侧道路下方，-3m 深处） ──
+  - id: "utility_tunnel"
+    pose: { position: [-21, 7.5, -3] }
+    cuboid: { half_extents: [3, 25, 1.5] }
+
+  # 管廊接入点（柴发楼连接管廊的管道路径）
+  - id: "pipe_corridor"
+    pose: { position: [-3, 7.5, -1.5] }
+    cuboid: { half_extents: [3, 1, 1] }
+
+  # ── 东侧堆料/加工区 ──
+  - id: "east_staging"
+    pose: { position: [42.5, 7.5, 0] }
+    cuboid: { half_extents: [12.5, 12.5, 0.25] }
+
+  # 东侧堆场与柴发楼之间的防火隔离带
+  - id: "fire_buffer_zone"
+    pose: { position: [27.5, 7.5, 0] }
+    cuboid: { half_extents: [2.5, 10, 10] }
+
+  # ── 燃油储罐风险区（球体，15m 半径） ──
+  - id: "fuel_risk_zone"
+    pose: { position: [4, 0, 5] }
+    sphere: { radius: 15.0 }
+
+  # ── 吊车工作半径 ──
+  - id: "crane_work_envelope"
+    pose: { position: [15, 7.5, 15] }
+    sphere: { radius: 25.0 }
+
+  # ── 全场范围 ──
+  - id: "site_wide"
+    pose: { position: [0, 0, 5] }
+    cuboid: { half_extents: [60, 40, 20] }
+
+# ═══════════════════════════════════════════════════════════════
+# 屏障（遮挡剔除）：已完成的结构可阻挡软碰撞投影
+# ═══════════════════════════════════════════════════════════════
+barriers:
+  - geometry: "dg_building_footprint"    # 楼体建成后作为屏障
+
+# ═══════════════════════════════════════════════════════════════
+# 施工活动（时间精度：半天）
+# 每周 5 个工作日 × 2 = 10 个半天
+# "W1D1AM" = 第1周第1天上午
+# ═══════════════════════════════════════════════════════════════
+activities:
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第一阶段：场地准备 & 材料预囤（第 1-5 周）              ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W1: 场地清理 & 测量放线 ──
+  - id: "site_clearance"
+    name: "场地清理与测量放线"
+    timespan: { start: "2026-06-01T08:00", end: "2026-06-05T17:00" }
+    collision:
+      hard: { geometry: "dg_building_footprint" }
+
+  # ── W1-W2: 材料预囤（赶在道路封闭前） ──
+  # 钢筋进场（第1-2周，每天上午）
+  - id: "rebar_stockpile"
+    name: "钢筋进场 & 堆场预囤"
+    timespan: { start: "2026-06-01T08:00", end: "2026-06-12T12:00" }
+    probes:
+      - name: "access_check"
+        field: "road_access"
+        geometry: "north_road"
+        gte: 1.0
+        diagnostic_level: error
+    projections:
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: 5.0      # 每半天进场 5 吨
+      - field: "road_access"
+        geometry: "north_road"
+        value: -1.0     # 占用北侧道路通行容量
+
+  # 钢结构构件预进场（第1-3周）
+  - id: "steel_pre_staging"
+    name: "钢结构构件预囤"
+    timespan: { start: "2026-06-01T08:00", end: "2026-06-19T17:00" }
+    probes:
+      - name: "access_check"
+        field: "road_access"
+        geometry: "north_road"
+        gte: 1.0
+        diagnostic_level: error
+    projections:
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: 8.0      # 每半天进场 8 吨构件
+      - field: "road_access"
+        geometry: "north_road"
+        value: -1.0
+
+  # 柴发方舱预进场（第3-5周，共8个方舱+1个变电方舱）
+  - id: "dg_units_pre_staging"
+    name: "柴发方舱预囤（8+1）"
+    timespan: { start: "2026-06-15T08:00", end: "2026-07-03T17:00" }
+    probes:
+      - name: "access_check"
+        field: "road_access"
+        geometry: "north_road"
+        gte: 1.0
+        diagnostic_level: error
+    projections:
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: 12.0     # 方舱重量大
+      - field: "road_access"
+        geometry: "north_road"
+        value: -1.0
+
+  # ── W1-W4: 基础开挖 ──
+  - id: "excavation"
+    name: "筏板基础开挖"
+    timespan: { start: "2026-06-03T08:00", end: "2026-06-12T17:00" }
+    collision:
+      hard: { geometry: "concrete_raft" }
+    depends_on:
+      - activity_id: "site_clearance"
+        kind: FS
+
+  # ── W3-W4: 基础钢筋绑扎 ──
+  - id: "rebar_install"
+    name: "基础钢筋绑扎"
+    timespan: { start: "2026-06-15T08:00", end: "2026-06-19T17:00" }
+    depends_on:
+      - activity_id: "excavation"
+        kind: FS
+    probes:
+      - name: "rebar_inventory"
+        field: "east_stockpile"
+        geometry: "east_staging"
+        gte: 20.0       # 需要至少 20 吨钢筋库存
+        diagnostic_level: error
+    projections:
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -5.0     # 每半天消耗 5 吨
+    structures:
+      - field: "concrete_strength"
+        geometry: "concrete_raft"
+        value: 0.0
+        operator: replace
+
+  # ── W5: 基础混凝土浇筑（半天精度） ──
+  - id: "concrete_pour"
+    name: "筏板混凝土浇筑"
+    timespan: { start: "2026-06-29T08:00", end: "2026-06-30T17:00" }
+    depends_on:
+      - activity_id: "rebar_install"
+        kind: FS
+    collision:
+      hard: { geometry: "concrete_raft" }
+    projections:
+      - field: "concrete_strength"
+        geometry: "concrete_raft"
+        value: 0.15      # 浇筑后初始强度
+        operator: max
+
+  # ── W5-W7: 混凝土养护 ──
+  - id: "curing_period"
+    name: "混凝土养护期"
+    timespan: { start: "2026-07-01T08:00", end: "2026-07-17T17:00" }
+    depends_on:
+      - activity_id: "concrete_pour"
+        kind: FS
+    projections:
+      - field: "concrete_strength"
+        geometry: "concrete_raft"
+        value: 1.0       # 养护完成达到设计强度
+        operator: max
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第二阶段：道路封闭 & 关键冲突期（第 6-7 周）            ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W6: 北侧道路完全开挖埋管（彻底封闭，不可通行/不可堆放/不可承载） ──
+  - id: "north_road_closure"
+    name: "北侧道路开挖埋管 & 平整（完全封闭）"
+    timespan: { start: "2026-07-06T08:00", end: "2026-07-10T17:00" }
+    collision:
+      hard: { geometry: "north_road" }
+    projections:
+      - field: "road_access"
+        geometry: "north_road"
+        value: -100.0    # 彻底归零通行容量
+    structures:
+      - field: "occupancy"
+        geometry: "north_road"
+        kind: hard       # 硬碰撞投影，任何试图进入该区域的活动都会触发 error
+
+  # ── W7: 西侧道路彻底开挖（管廊上方的道路） ──
+  - id: "west_road_closure"
+    name: "西侧道路开挖埋管 & 平整（完全封闭）"
+    timespan: { start: "2026-07-13T08:00", end: "2026-07-17T17:00" }
+    collision:
+      hard: { geometry: "west_road" }
+    projections:
+      - field: "road_access"
+        geometry: "west_road"
+        value: -100.0
+    structures:
+      - field: "occupancy"
+        geometry: "west_road"
+        kind: hard
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第三阶段：钢结构安装（第 8-12 周，道路已恢复）          ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W8: 钢结构一层安装 ──
+  - id: "steel_1f_erection"
+    name: "钢结构一层安装"
+    timespan: { start: "2026-07-20T08:00", end: "2026-07-31T17:00" }
+    depends_on:
+      - activity_id: "curing_period"
+        kind: FS
+      - activity_id: "north_road_closure"
+        kind: FS
+      - activity_id: "west_road_closure"
+        kind: FS
+    collision:
+      hard: { geometry: "dg_building_footprint" }
+      soft: { geometry: "crane_work_envelope" }
+    probes:
+      - name: "strength_check"
+        field: "concrete_strength"
+        geometry: "concrete_raft"
+        gte: 0.75
+        diagnostic_level: error
+      - name: "steel_inventory_check"
+        field: "east_stockpile"
+        geometry: "east_staging"
+        gte: 30.0
+        diagnostic_level: warning
+    projections:
+      - field: "steel_completion"
+        geometry: "dg_building_footprint"
+        value: 0.5
+        operator: max
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -4.0
+      - field: "fire_load"
+        geometry: "dg_building_footprint"
+        value: 0.2       # 钢结构焊接引入一定火灾风险
+
+  # ── W9-W10: 钢结构二层安装 ──
+  - id: "steel_2f_erection"
+    name: "钢结构二层安装"
+    timespan: { start: "2026-08-03T08:00", end: "2026-08-14T17:00" }
+    depends_on:
+      - activity_id: "steel_1f_erection"
+        kind: FS
+    collision:
+      hard: { geometry: "dg_building_footprint" }
+      soft: { geometry: "crane_work_envelope" }
+    projections:
+      - field: "steel_completion"
+        geometry: "dg_building_footprint"
+        value: 1.0
+        operator: max
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -4.0
+      - field: "fire_load"
+        geometry: "dg_building_footprint"
+        value: 0.3
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第四阶段：柴发方舱 & 变电方舱安装（第 13-16 周）        ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W11-W12: 一层 4 个柴发方舱吊装（每个半天一个） ──
+  - id: "dg_1f_placement"
+    name: "一层柴发方舱吊装就位（4台）"
+    timespan: { start: "2026-08-24T08:00", end: "2026-08-28T17:00" }
+    depends_on:
+      - activity_id: "steel_2f_erection"
+        kind: FS
+    collision:
+      soft: { geometry: "crane_work_envelope" }
+    probes:
+      - name: "dg_inventory_check"
+        field: "east_stockpile"
+        geometry: "east_staging"
+        gte: 40.0       # 每个方舱约 10 吨（简化）
+        diagnostic_level: error
+    projections:
+      - field: "equipment_status"
+        geometry: "dg_building_footprint"
+        record:
+          key: "dg_units_1f"
+          type: "placed"
+          attributes: { floor: "1F", count: "4" }
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -8.0
+
+  # ── W13-W14: 二层 4 个柴发方舱吊装 ──
+  - id: "dg_2f_placement"
+    name: "二层柴发方舱吊装就位（4台）"
+    timespan: { start: "2026-09-07T08:00", end: "2026-09-11T17:00" }
+    depends_on:
+      - activity_id: "dg_1f_placement"
+        kind: FS
+    collision:
+      soft: { geometry: "crane_work_envelope" }
+    projections:
+      - field: "equipment_status"
+        geometry: "dg_building_footprint"
+        record:
+          key: "dg_units_2f"
+          type: "placed"
+          attributes: { floor: "2F", count: "4" }
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -8.0
+
+  # ── W15: 变电方舱吊装 ──
+  - id: "transformer_placement"
+    name: "变电方舱吊装就位"
+    timespan: { start: "2026-09-14T08:00", end: "2026-09-15T17:00" }
+    depends_on:
+      - activity_id: "dg_2f_placement"
+        kind: FS
+    collision:
+      soft: { geometry: "crane_work_envelope" }
+    projections:
+      - field: "equipment_status"
+        geometry: "dg_building_footprint"
+        record:
+          key: "transformer_unit"
+          type: "placed"
+          attributes: { type: "step_up_transformer" }
+      - field: "east_stockpile"
+        geometry: "east_staging"
+        value: -5.0
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第五阶段：燃油系统 & 消防水系统（第 17-20 周）          ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W17: 燃油储罐安装（2个卧式罐） ──
+  - id: "fuel_tank_install"
+    name: "燃油储罐安装"
+    timespan: { start: "2026-09-28T08:00", end: "2026-10-02T17:00" }
+    depends_on:
+      - activity_id: "transformer_placement"
+        kind: FS
+    collision:
+      hard: { geometry: "fuel_tank" }
+    projections:
+      - field: "fire_load"
+        geometry: "fuel_risk_zone"
+        value: 0.8       # 储油罐大幅增加火灾风险
+      - field: "equipment_status"
+        geometry: "fuel_tank"
+        record:
+          key: "fuel_tanks"
+          type: "installed"
+          attributes: { count: "2", capacity: "10000L" }
+
+  # ── W18: 消防水池施工 ──
+  - id: "fire_water_tank_install"
+    name: "消防水池施工"
+    timespan: { start: "2026-10-05T08:00", end: "2026-10-09T17:00" }
+    depends_on:
+      - activity_id: "fuel_tank_install"
+        kind: FS
+    collision:
+      hard: { geometry: "fire_water_tank" }
+    projections:
+      - field: "equipment_status"
+        geometry: "fire_water_tank"
+        record:
+          key: "fire_water_tank"
+          type: "installed"
+          attributes: { capacity: "50000L" }
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第六阶段：管廊接入 & 配电（第 21-24 周）                ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # ── W21: 综合管廊接口施工 ──
+  - id: "utility_tunnel_connection"
+    name: "综合管廊管道接入"
+    timespan: { start: "2026-10-26T08:00", end: "2026-10-30T17:00" }
+    depends_on:
+      - activity_id: "dg_2f_placement"
+        kind: FS
+      - activity_id: "west_road_closure"
+        kind: FS     # 必须在西侧道路恢复后才能做（或至少协调）
+    collision:
+      hard: { geometry: "pipe_corridor" }
+    probes:
+      - name: "tunnel_capacity_check"
+        field: "utility_tunnel_capacity"
+        geometry: "utility_tunnel"
+        gte: 1.0
+        diagnostic_level: error
+    projections:
+      - field: "utility_tunnel_capacity"
+        geometry: "utility_tunnel"
+        value: -9.0     # 消耗 9 个接口（8 DG + 1 TX）
+
+  # ── W22-W23: 配电系统安装 ──
+  - id: "electrical_install"
+    name: "配电系统安装 & 接线"
+    timespan: { start: "2026-11-02T08:00", end: "2026-11-13T17:00" }
+    depends_on:
+      - activity_id: "utility_tunnel_connection"
+        kind: FS
+    probes:
+      - name: "dg_placed_check"
+        field: "equipment_status"
+        geometry: "dg_building_footprint"
+        present:
+          key: "dg_units_1f"
+          type: "placed"
+        diagnostic_level: error
+      - name: "transformer_check"
+        field: "equipment_status"
+        geometry: "dg_building_footprint"
+        present:
+          key: "transformer_unit"
+          type: "placed"
+        diagnostic_level: error
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 第七阶段：调试 & 试运行（第 24-26 周）                  ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  - id: "commissioning"
+    name: "系统联调 & 试运行"
+    timespan: { start: "2026-11-16T08:00", end: "2026-11-27T17:00" }
+    depends_on:
+      - activity_id: "electrical_install"
+        kind: FS
+      - activity_id: "fuel_tank_install"
+        kind: FS
+      - activity_id: "fire_water_tank_install"
+        kind: FS
+    collision:
+      soft: { geometry: "dg_building_footprint" }
+    projections:
+      - field: "fire_load"
+        geometry: "fuel_risk_zone"
+        value: 1.0       # 试运行期间火险最高
+      - field: "work_progress_rate"
+        geometry: "site_wide"
+        value: 100.0
+
+  # ╔══════════════════════════════════════════════════════════╗
+  # ║ 贯穿性活动                                              ║
+  # ╚══════════════════════════════════════════════════════════╝
+
+  # 管廊初始容量
+  - id: "utility_tunnel_provisioning"
+    name: "综合管廊容量配置"
+    timespan: { start: "2026-06-01T08:00", end: "2026-11-27T17:00" }
+    projections:
+      - field: "utility_tunnel_capacity"
+        geometry: "utility_tunnel"
+        value: 12.0     # 总共 12 个接口
+
+  # 东侧堆场防火监控（贯穿始终）
+  - id: "fire_watch"
+    name: "东侧堆场防火监控"
+    timespan: { start: "2026-06-01T08:00", end: "2026-11-27T17:00" }
+    probes:
+      - name: "fire_risk_monitor"
+        field: "fire_load"
+        geometry: "east_staging"
+        lte: 0.6
+        diagnostic_level: warning
+      - name: "fire_risk_critical"
+        field: "fire_load"
+        geometry: "east_staging"
+        lte: 0.9
+        diagnostic_level: error

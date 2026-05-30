@@ -1,0 +1,68 @@
+version: "0.1"
+name: "Presence Permit Demo"
+description: "Excavation permit must be approved before excavation work can proceed."
+
+fields:
+  - name: "permits"
+    type: presence
+
+geometries:
+  - id: "site_wide"
+    pose:
+      position: [0, 0, 25]
+    cuboid:
+      half_extents: [100, 100, 75]
+
+  - id: "excavation_zone"
+    pose:
+      position: [15, 15, 10]
+    cuboid:
+      half_extents: [15, 15, 10]
+
+activities:
+  - id: "permit_approval"
+    name: "Excavation Permit Approval"
+    timespan:
+      start: "2026-01-10"
+      end: "2026-01-15"
+    projections:
+      - name: "issue_permit"
+        field: "permits"
+        geometry: "site_wide"
+        record:
+          key: "excavation_permit_001"
+          type: "permit"
+          attributes:
+            zone: "A"
+            status: "approved"
+          valid_until: "2026-06-30"
+
+  - id: "excavation_early"
+    name: "Excavation (Early Start — before permit)"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-20"
+    probes:
+      - name: "check_permit"
+        field: "permits"
+        geometry: "excavation_zone"
+        present:
+          key: "excavation_permit_001"
+          type: "permit"
+          attributes:
+            status: "approved"
+
+  - id: "excavation_on_time"
+    name: "Excavation (After Approval)"
+    timespan:
+      start: "2026-01-16"
+      end: "2026-01-30"
+    probes:
+      - name: "check_permit"
+        field: "permits"
+        geometry: "excavation_zone"
+        present:
+          key: "excavation_permit_001"
+          type: "permit"
+          attributes:
+            status: "approved"

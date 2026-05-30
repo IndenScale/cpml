@@ -1,0 +1,98 @@
+version: "1.0"
+name: "RateField Demo"
+description: >
+  Two excavation activities consuming material at different rates.
+  RateField tracks flow rate of material movement.
+  Also demonstrates backpressure (rate exceeding capacity) and
+  starvation (rate below minimum throughput).
+
+fields:
+  - name: "material_flow"
+    type: rate
+    window_size: 3
+
+  - name: "pipeline_throughput"
+    type: rate
+    window_size: 5
+
+activities:
+  - id: "excavation_slow"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-15"
+    projections:
+      - field: "material_flow"
+        geometry: "work_zone"
+        value: 50.0
+        confidence: 0.8
+    probes:
+      - field: "material_flow"
+        geometry: "work_zone"
+        gte: 30.0
+
+  - id: "excavation_fast"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-15"
+    projections:
+      - field: "material_flow"
+        geometry: "work_zone"
+        value: 100.0
+    probes:
+      - field: "material_flow"
+        geometry: "work_zone"
+        gte: 120.0
+
+  # Backpressure demo: single fast upstream (>200 units/day) floods pipeline.
+  # The downstream consumer can only handle 150 units/day.
+  - id: "fast_upstream"
+    timespan:
+      start: "2026-02-01"
+      end: "2026-02-10"
+    projections:
+      - field: "pipeline_throughput"
+        geometry: "pipe_section"
+        value: 250.0
+    probes:
+      - name: "backpressure_check"
+        field: "pipeline_throughput"
+        geometry: "pipe_section"
+        lte: 150.0
+        diagnostic_level: warning
+
+  # Starvation demo: single slow upstream (5 units/day) cannot meet minimum demand.
+  # Uses a separate region so it doesn't combine with fast_upstream.
+  - id: "slow_upstream"
+    timespan:
+      start: "2026-02-01"
+      end: "2026-02-10"
+    projections:
+      - field: "pipeline_throughput"
+        geometry: "starved_pipe"
+        value: 5.0
+    probes:
+      - name: "starvation_check"
+        field: "pipeline_throughput"
+        geometry: "starved_pipe"
+        min: 30.0
+        max: 300.0
+        diagnostic_level: error
+
+geometries:
+  - id: "work_zone"
+    cuboid:
+      half_extents: [10.0, 10.0, 5.0]
+    pose:
+      position: [0.0, 0.0, 0.0]
+
+  - id: "pipe_section"
+    cuboid:
+      half_extents: [5.0, 5.0, 20.0]
+    pose:
+      position: [20.0, 0.0, 10.0]
+
+  - id: "starved_pipe"
+    cuboid:
+      half_extents: [5.0, 5.0, 20.0]
+    pose:
+      position: [40.0, 0.0, 10.0]

@@ -1,0 +1,57 @@
+version: "0.1"
+name: "Tower Crane Collision Demo"
+description: "Two tower cranes with overlapping workspaces. Hard-hard and soft-hard = error, soft-soft = warning."
+
+fields:
+  - name: "collision"
+    type: occupancy
+
+geometries:
+  - id: "crane_A_body"
+    pose:
+      position: [2.5, 2.5, 15]
+    cuboid:
+      half_extents: [2.5, 2.5, 15]
+
+  - id: "crane_A_swing"
+    pose:
+      position: [2.5, 2.5, 25]
+    sphere:
+      radius: 8.0
+
+  - id: "crane_B_body"
+    pose:
+      position: [14.5, 2.5, 15]
+    cuboid:
+      half_extents: [2.5, 2.5, 15]
+
+  - id: "crane_B_swing"
+    pose:
+      position: [14.5, 2.5, 25]
+    sphere:
+      radius: 8.0
+
+activities:
+  - id: "crane_A"
+    name: "Tower Crane A"
+    timespan:
+      start: "2026-01-10"
+      end: "2026-01-20"
+    geometry: "crane_A_body"
+    collision:
+      hard:
+        geometry: "crane_A_body"
+      soft:
+        geometry: "crane_A_swing"
+
+  - id: "crane_B"
+    name: "Tower Crane B"
+    timespan:
+      start: "2026-01-12"
+      end: "2026-01-22"
+    geometry: "crane_B_body"
+    collision:
+      hard:
+        geometry: "crane_B_body"
+      soft:
+        geometry: "crane_B_swing"

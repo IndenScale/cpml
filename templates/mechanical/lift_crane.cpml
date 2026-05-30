@@ -1,0 +1,61 @@
+# Activity Template: lift_crane
+# Risk domain: mechanical, fall
+# Description: 吊装作业 — 摆臂 soft zone + 荷载坠落风险 + 信号工需求 + 风速敏感
+#
+# Parameters to fill in:
+#   {{id}}              — unique activity ID
+#   {{timespan_start}}  — ISO 8601 start datetime
+#   {{timespan_end}}    — ISO 8601 end datetime
+#   {{crane_body}}      — geometry ref for the crane mast/body (cuboid)
+#   {{crane_swing}}     — geometry ref for the boom swing zone (sphere, radius = boom length)
+#   {{load_fall_zone}}  — geometry ref for the load drop hazard zone (sphere, radius = load radius + safety margin)
+#   {{lift_path}}       — geometry ref for the lifting path envelope (cuboid)
+#
+# Required fields in the parent .cpml file:
+#   - occupancy (occupancy)
+#   - signal_person (capacity)
+#   - wind_speed (scalar, operator: max) — optional, if wind monitoring is modeled
+
+activity:
+  id: "{{id}}"
+  name: "吊装作业"
+  timespan:
+    start: "{{timespan_start}}"
+    end: "{{timespan_end}}"
+
+  # 碰撞 — crane body is hard, swing zone is soft
+  collision:
+    hard:
+      geometry: "{{crane_body}}"
+    soft:
+      geometry: "{{crane_swing}}"
+
+  # 不可剥离的资源需求
+  demands:
+    - field: "signal_person"
+      geometry: "{{crane_body}}"
+      amount: 1
+
+  # 不可剥离的固有风险投影
+  projections:
+    # 荷载坠落风险区 — soft occupancy，几何为吊运路径下方的投影区
+    - name: "load_drop_hazard"
+      field: "occupancy"
+      geometry: "{{load_fall_zone}}"
+      kind: soft
+
+  # 不可剥离的固有探针
+  probes:
+    # 吊运通道净空 — 必须无阻挡
+    - name: "lift_path_clearance"
+      field: "occupancy"
+      geometry: "{{lift_path}}"
+      empty: true
+      diagnostic_level: error
+
+    # 风速检查 — 如配置了 wind_speed 场，高风速时不允许吊装
+    - name: "wind_speed_check"
+      field: "wind_speed"
+      geometry: "{{crane_body}}"
+      lte: 15.0
+      diagnostic_level: error

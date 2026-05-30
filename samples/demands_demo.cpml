@@ -1,0 +1,75 @@
+version: "1.0"
+name: "Demands Syntax Sugar Demo"
+description: >
+  Demonstrates the demands sugar — auto-generates Gte probe +
+  negative Capacity projection for resource consumption.
+
+fields:
+  - name: "power_supply"
+    type: capacity
+
+  - name: "water_supply"
+    type: capacity
+
+  - name: "welders"
+    type: capacity
+
+geometries:
+  - id: "zone_A"
+    pose: { position: [10, 10, 5] }
+    cuboid: { half_extents: [10, 10, 5] }
+
+  - id: "zone_B"
+    pose: { position: [30, 10, 5] }
+    cuboid: { half_extents: [10, 10, 5] }
+
+  - id: "site_wide"
+    pose: { position: [0, 0, 0] }
+    cuboid: { half_extents: [50, 30, 10] }
+
+activities:
+  # Provision power and water
+  - id: "resource_provision"
+    name: "Resource Provisioning"
+    timespan: { start: "2026-06-01", end: "2026-06-30" }
+    projections:
+      - field: "power_supply"
+        geometry: "site_wide"
+        value: 500
+      - field: "water_supply"
+        geometry: "site_wide"
+        value: 100
+
+  # Activity using demands sugar — should consume power and water
+  - id: "concrete_pour_A"
+    name: "Concrete Pour Zone A"
+    timespan: { start: "2026-06-05", end: "2026-06-07" }
+    demands:
+      - field: "power_supply"
+        geometry: "zone_A"
+        amount: 150
+      - field: "water_supply"
+        geometry: "zone_A"
+        amount: 30
+
+  # Another activity with overlapping resource demand
+  - id: "concrete_pour_B"
+    name: "Concrete Pour Zone B"
+    timespan: { start: "2026-06-05", end: "2026-06-07" }
+    demands:
+      - field: "power_supply"
+        geometry: "zone_B"
+        amount: 200
+      - field: "water_supply"
+        geometry: "zone_B"
+        amount: 40
+
+  # Activity with custom diagnostic level on demand
+  - id: "night_shift_work"
+    name: "Night Shift Work"
+    timespan: { start: "2026-06-01", end: "2026-06-30" }
+    demands:
+      - field: "power_supply"
+        geometry: "zone_A"
+        amount: 50
+        diagnostic_level: warning

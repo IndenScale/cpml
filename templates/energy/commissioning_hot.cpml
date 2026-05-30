@@ -1,0 +1,80 @@
+# Activity Template: commissioning_hot
+# Risk domain: energy, fire
+# Description: 带载测试/热态调试 — fire_load 最高级别 + 多系统交互敏感 + 意外启动风险
+#
+# Parameters to fill in:
+#   {{id}}                 — unique activity ID
+#   {{timespan_start}}     — ISO 8601 start datetime
+#   {{timespan_end}}       — ISO 8601 end datetime
+#   {{equipment_zone}}     — geometry ref for the equipment under test (cuboid)
+#   {{test_risk_zone}}     — geometry ref for the test hazard zone (sphere, 20m typical)
+#   {{control_boundary}}   — geometry ref for the exclusion boundary (cuboid)
+#
+# Required fields in the parent .cpml file:
+#   - fire_load (scalar, operator: max)
+#   - occupancy (occupancy)
+#   - equipment_status (presence)
+#   - loto_status (presence) — Lock-Out Tag-Out clearance
+
+activity:
+  id: "{{id}}"
+  name: "带载测试/热态调试"
+  timespan:
+    start: "{{timespan_start}}"
+    end: "{{timespan_end}}"
+
+  # 空间占用 — 调试区域 + 软碰撞测试风险区
+  collision:
+    hard:
+      geometry: "{{control_boundary}}"
+    soft:
+      geometry: "{{test_risk_zone}}"
+
+  # 不可剥离的固有风险投影
+  projections:
+    # 火险最高级别 — 带载运行期间
+    - name: "commissioning_fire_load"
+      field: "fire_load"
+      geometry: "{{equipment_zone}}"
+      value: 1.0
+
+    # 意外启动风险 — 测试中的设备可能意外动作
+    - name: "unexpected_startup_risk"
+      field: "occupancy"
+      geometry: "{{control_boundary}}"
+      kind: soft
+
+  # 不可剥离的固有探针
+  probes:
+    # LOTO 状态确认 — 非测试对象的设备必须已锁定
+    - name: "loto_verification"
+      field: "loto_status"
+      geometry: "{{control_boundary}}"
+      present:
+        key: "loto_applied"
+        type: "loto"
+        attributes: { scope: "non_test_equipment" }
+      diagnostic_level: error
+
+    # 设备就位确认 — 待测设备必须已安装
+    - name: "equipment_ready_check"
+      field: "equipment_status"
+      geometry: "{{equipment_zone}}"
+      present:
+        key: "{{id}}_equipment"
+        type: "installed"
+      diagnostic_level: error
+
+    # 人员清场 — 测试风险区域内不得有其他人员活动
+    - name: "personnel_exclusion"
+      field: "occupancy"
+      geometry: "{{test_risk_zone}}"
+      empty: true
+      diagnostic_level: error
+
+    # 消防能力 — 调试期间必须保持消防响应就绪
+    - name: "fire_response_ready"
+      field: "fire_response_capability"
+      geometry: "{{test_risk_zone}}"
+      gte: 1
+      diagnostic_level: error

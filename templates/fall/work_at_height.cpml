@@ -1,0 +1,58 @@
+# Activity Template: work_at_height
+# Risk domain: fall
+# Description: 登高作业 — 坠落风险区 + 悬挂点/登高设备需求 + info 级交底提醒（不可消除）
+#
+# Parameters to fill in:
+#   {{id}}              — unique activity ID
+#   {{timespan_start}}  — ISO 8601 start datetime
+#   {{timespan_end}}    — ISO 8601 end datetime
+#   {{work_envelope}}   — geometry ref for the work area (cuboid)
+#   {{fall_zone}}       — geometry ref for the fall hazard zone below work area (cuboid)
+#   {{height_m}}        — work height in meters (used for fall zone sizing)
+#
+# Required fields in the parent .cpml file:
+#   - occupancy (occupancy)
+#   - height_access_equipment (capacity)
+
+activity:
+  id: "{{id}}"
+  name: "登高作业"
+  timespan:
+    start: "{{timespan_start}}"
+    end: "{{timespan_end}}"
+
+  # 空间占用
+  collision:
+    hard:
+      geometry: "{{work_envelope}}"
+
+  # 登高设备/悬挂点需求
+  demands:
+    - field: "height_access_equipment"
+      geometry: "{{work_envelope}}"
+      amount: 1
+
+  # 不可剥离的固有风险投影
+  projections:
+    # 坠落风险区 — soft occupancy
+    - name: "fall_hazard"
+      field: "occupancy"
+      geometry: "{{fall_zone}}"
+      kind: soft
+
+  # 不可剥离的固有探针
+  probes:
+    # 作业净空
+    - name: "clearance_check"
+      field: "occupancy"
+      geometry: "{{work_envelope}}"
+      empty: true
+      diagnostic_level: error
+
+  # 登高交底提醒 — info 级别，不可消除
+  structures:
+    - name: "height_work_reminder"
+      field: "occupancy"
+      geometry: "{{fall_zone}}"
+      kind: soft
+      diagnostic_level: info

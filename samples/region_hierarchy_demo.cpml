@@ -1,0 +1,73 @@
+version: "0.1"
+name: "Region Hierarchy Demo"
+description: "Capacity checks in zone_A see the supply in site_wide through region hierarchy."
+
+fields:
+  - name: power
+    type: capacity
+
+regions:
+  - id: site_wide
+  - id: zone_A
+    parent: site_wide
+
+geometries:
+  - id: supply_geom
+    region: site_wide
+    pose:
+      position: [0, 0, 0]
+    cuboid:
+      half_extents: [5, 5, 5]
+  - id: zone_geom
+    region: zone_A
+    pose:
+      position: [100, 100, 0]
+    cuboid:
+      half_extents: [5, 5, 5]
+
+activities:
+  - id: supply_power
+    name: "Power Supply"
+    timespan:
+      start: "2026-01-01"
+      end: "2026-01-30"
+    geometry: supply_geom
+    projections:
+      - name: "supply"
+        field: power
+        geometry: supply_geom
+        value: 600
+
+  - id: crane_work
+    name: "Tower Crane Operations"
+    timespan:
+      start: "2026-01-02"
+      end: "2026-01-15"
+    geometry: supply_geom
+    projections:
+      - name: "crane_power"
+        field: power
+        geometry: supply_geom
+        value: -300
+    probes:
+      - name: "check_site_power"
+        field: power
+        geometry: supply_geom
+        gte: 0
+
+  - id: equipment_work
+    name: "Zone A Equipment"
+    timespan:
+      start: "2026-01-02"
+      end: "2026-01-15"
+    geometry: zone_geom
+    projections:
+      - name: "equipment_power"
+        field: power
+        geometry: zone_geom
+        value: -200
+    probes:
+      - name: "check_zone_power"
+        field: power
+        geometry: zone_geom
+        gte: 0

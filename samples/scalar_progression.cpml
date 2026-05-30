@@ -1,0 +1,94 @@
+version: "0.1"
+name: "Scalar Progression Demo"
+description: "Concrete foundation curing progression — upper structure checks base strength before proceeding."
+
+fields:
+  - name: "concrete_strength"
+    type: scalar
+    operator: max
+
+geometries:
+  - id: "foundation"
+    pose:
+      position: [10, 10, -2.5]
+    cuboid:
+      half_extents: [10, 10, 2.5]
+
+  - id: "column_base"
+    pose:
+      position: [10, 10, 1.5]
+    cuboid:
+      half_extents: [10, 10, 1.5]
+
+activities:
+  - id: "rebar_tie"
+    name: "Rebar Installation"
+    timespan:
+      start: "2026-01-01"
+      end: "2026-01-05"
+    projections:
+      - name: "rebar_placed"
+        field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.0
+        operator: replace
+
+  - id: "concrete_pour"
+    name: "Concrete Pouring"
+    timespan:
+      start: "2026-01-05"
+      end: "2026-01-07"
+    projections:
+      - name: "initial_strength"
+        field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.2
+        operator: max
+
+  - id: "curing_phase1"
+    name: "Curing Week 1"
+    timespan:
+      start: "2026-01-07"
+      end: "2026-01-14"
+    projections:
+      - name: "strength_week1"
+        field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.5
+        operator: max
+
+  - id: "curing_phase2"
+    name: "Curing Week 2"
+    timespan:
+      start: "2026-01-14"
+      end: "2026-01-21"
+    projections:
+      - name: "strength_week2"
+        field: "concrete_strength"
+        geometry: "foundation"
+        value: 0.85
+        operator: max
+
+  - id: "curing_phase3"
+    name: "Curing Week 3"
+    timespan:
+      start: "2026-01-21"
+      end: "2026-01-28"
+    projections:
+      - name: "strength_week3"
+        field: "concrete_strength"
+        geometry: "foundation"
+        value: 1.0
+        operator: max
+
+  - id: "column_construction"
+    name: "Column Construction"
+    timespan:
+      start: "2026-01-10"
+      end: "2026-01-30"
+    probes:
+      - name: "check_foundation_strength"
+        field: "concrete_strength"
+        geometry: "column_base"
+        gte: 0.7
+        diagnostic_level: error
