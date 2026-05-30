@@ -12,6 +12,15 @@ use crate::schema::DiagnosticLevel;
 
 use super::field_eval::PersistentState;
 
+/// Context that bundles the static model data needed by probe checking,
+/// reducing argument count for `check_probes`.
+pub struct ProbeCheckCtx<'a> {
+    pub all_activities: &'a [Activity],
+    pub field_map: &'a HashMap<String, Field>,
+    pub barriers: &'a [Geometry],
+    pub region_hierarchy: &'a HashMap<String, String>,
+}
+
 /// A diagnostic produced when a probe assertion fails.
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
@@ -40,16 +49,13 @@ pub fn check_probes(
     keyframe_index: usize,
     keyframe_date: NaiveDateTime,
     active_activities: &[&Activity],
-    all_activities: &[Activity],
-    field_map: &HashMap<String, Field>,
     persistent_state: &PersistentState,
-    barriers: &[Geometry],
-    region_hierarchy: &HashMap<String, String>,
+    ctx: &ProbeCheckCtx,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
 
     // Build a flat list of all projections for blame tracing
-    let all_projections: Vec<&Projection> = all_activities
+    let all_projections: Vec<&Projection> = ctx.all_activities
         .iter()
         .flat_map(|a| a.projections.iter())
         .collect();
@@ -68,14 +74,14 @@ pub fn check_probes(
         .collect();
 
     // Build series lookup: activity_id -> series_id
-    let series_map: HashMap<String, Option<String>> = all_activities
+    let series_map: HashMap<String, Option<String>> = ctx.all_activities
         .iter()
         .map(|a| (a.id.clone(), a.series.clone()))
         .collect();
 
     for activity in active_activities {
         for probe in &activity.probes {
-            let field = match field_map.get(&probe.field_name) {
+            let field = match ctx.field_map.get(&probe.field_name) {
                 Some(f) => f,
                 None => continue,
             };
@@ -91,7 +97,7 @@ pub fn check_probes(
                         &activity.id,
                         activity.series.as_deref(),
                         &series_map,
-                        barriers,
+                        ctx.barriers,
                     );
                     if let Some(kind) = worst {
                         // Auto-level by worst kind; probe level acts as floor (cannot demote)
@@ -137,7 +143,7 @@ pub fn check_probes(
                         &probe.field_name,
                         &probe.region_key(),
                         keyframe_date,
-                        region_hierarchy,
+                        ctx.region_hierarchy,
                     ) {
                         Some(v) => v,
                         None => continue,
@@ -172,7 +178,7 @@ pub fn check_probes(
                         &probe.field_name,
                         &probe.region_key(),
                         keyframe_date,
-                        region_hierarchy,
+                        ctx.region_hierarchy,
                     ) {
                         Some(v) => v,
                         None => continue,
@@ -207,7 +213,7 @@ pub fn check_probes(
                         &probe.field_name,
                         &probe.region_key(),
                         keyframe_date,
-                        region_hierarchy,
+                        ctx.region_hierarchy,
                     ) {
                         Some(v) => v,
                         None => continue,
@@ -276,7 +282,7 @@ pub fn check_probes(
         }
     }
 
-    diagnostics.sort_by(|a, b| b.level.cmp(&a.level));
+    diagnostics.sort_by_key(|b| std::cmp::Reverse(b.level));
     diagnostics
 }
 

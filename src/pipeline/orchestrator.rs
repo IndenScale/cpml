@@ -76,15 +76,18 @@ pub fn run_pipeline(input: &str) -> Result<PipelineResult, CpmlError> {
         let active = active_activities_at(kf, &model.activities);
 
         // Check probes for this frame
+        let ctx = super::probe_check::ProbeCheckCtx {
+            all_activities: &model.activities,
+            field_map: &field_map,
+            barriers: &model.barriers,
+            region_hierarchy: &model.region_hierarchy,
+        };
         let frame_diags = super::probe_check::check_probes(
             kf.index,
             kf.date,
             &active,
-            &model.activities,
-            &field_map,
             &persistent_state,
-            &model.barriers,
-            &model.region_hierarchy,
+            &ctx,
         );
         all_diagnostics.extend(frame_diags);
 

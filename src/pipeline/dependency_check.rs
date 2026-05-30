@@ -84,6 +84,6 @@ pub fn check_dependencies(activities: &[Activity], keyframes: &[Keyframe]) -> Ve
         }
     }
 
-    diagnostics.sort_by(|a, b| b.level.cmp(&a.level));
+    diagnostics.sort_by_key(|b| std::cmp::Reverse(b.level));
     diagnostics
 }

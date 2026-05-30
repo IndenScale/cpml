@@ -6,8 +6,8 @@ all-features = true
 
 [advisories]
 vulnerability = "deny"
-unmaintained = "warn"
-unsound = "deny"
+unmaintained = "workspace"
+unsound = "workspace"
 yanked = "deny"
 notice = "warn"
 ignore = []
