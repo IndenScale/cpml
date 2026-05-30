@@ -24,7 +24,8 @@ pub fn resolve(doc: schema::CpmlDocument) -> Result<CpmlModel, CpmlError> {
                 geo.id
             )));
         }
-        let geometry = resolve_geometry_with_region(&geo.shape, geo.pose.as_ref(), geo.region.clone());
+        let geometry =
+            resolve_geometry_with_region(&geo.shape, geo.pose.as_ref(), geo.region.clone());
         if let Some(ref region_id) = geo.region {
             region_to_geom.insert(region_id.clone(), geo.id.clone());
         }
@@ -35,31 +36,26 @@ pub fn resolve(doc: schema::CpmlDocument) -> Result<CpmlModel, CpmlError> {
     // RegionDefs reference geometry IDs, which resolve to AABB region keys.
     let mut region_hierarchy: HashMap<String, String> = HashMap::new();
     for rd in &doc.regions {
-        let child_geom_id = region_to_geom
-            .get(&rd.id)
-            .or_else(|| {
-                // Allow region ID to directly name a geometry
-                if geometry_map.contains_key(&rd.id) {
-                    Some(&rd.id)
+        let child_geom_id = region_to_geom.get(&rd.id).or_else(|| {
+            // Allow region ID to directly name a geometry
+            if geometry_map.contains_key(&rd.id) {
+                Some(&rd.id)
+            } else {
+                None
+            }
+        });
+        if let Some(parent_region_id) = &rd.parent {
+            let parent_geom_id = region_to_geom.get(parent_region_id).or_else(|| {
+                if geometry_map.contains_key(parent_region_id) {
+                    Some(parent_region_id)
                 } else {
                     None
                 }
             });
-        if let Some(parent_region_id) = &rd.parent {
-            let parent_geom_id = region_to_geom
-                .get(parent_region_id)
-                .or_else(|| {
-                    if geometry_map.contains_key(parent_region_id) {
-                        Some(parent_region_id)
-                    } else {
-                        None
-                    }
-                });
             if let (Some(child_gid), Some(parent_gid)) = (child_geom_id, parent_geom_id) {
-                if let (Some(child_geom), Some(parent_geom)) = (
-                    geometry_map.get(child_gid),
-                    geometry_map.get(parent_gid),
-                ) {
+                if let (Some(child_geom), Some(parent_geom)) =
+                    (geometry_map.get(child_gid), geometry_map.get(parent_gid))
+                {
                     let child_key = child_geom.region_key();
                     let parent_key = parent_geom.region_key();
                     region_hierarchy.insert(child_key, parent_key);

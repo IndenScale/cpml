@@ -490,7 +490,7 @@ mod tests {
                 position: [10.0, 10.0, 10.0],
                 rotation: [0.0, 0.0, 0.0],
             },
-        region: None,
+            region: None,
         };
         let aabb = geom.world_aabb();
         assert_eq!(aabb.min, [5.0, 5.0, 5.0]);
@@ -508,7 +508,7 @@ mod tests {
                 position: [0.0, 0.0, 4.0],
                 rotation: [0.0, 0.0, 0.0],
             },
-        region: None,
+            region: None,
         };
         let aabb = geom.world_aabb();
         assert_eq!(aabb.min, [-1.0, -1.0, 0.0]);
@@ -523,7 +523,7 @@ mod tests {
                 half_height: 5.0,
             },
             pose: Pose::from_position([0.0, 0.0, 5.0]),
-        region: None,
+            region: None,
         };
         let aabb = geom.world_aabb();
         assert_eq!(aabb.min, [-3.0, -3.0, 0.0]);
@@ -539,14 +539,14 @@ mod tests {
                 half_extents: [2.0, 2.0, 2.0],
             },
             pose: Pose::from_position([0.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         let b = Geometry {
             shape: Shape::Cuboid {
                 half_extents: [2.0, 2.0, 2.0],
             },
             pose: Pose::from_position([3.0, 3.0, 3.0]),
-        region: None,
+            region: None,
         };
         assert!(a.exact_intersects(&b));
     }
@@ -558,14 +558,14 @@ mod tests {
                 half_extents: [1.0, 1.0, 1.0],
             },
             pose: Pose::from_position([0.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         let b = Geometry {
             shape: Shape::Cuboid {
                 half_extents: [1.0, 1.0, 1.0],
             },
             pose: Pose::from_position([10.0, 10.0, 10.0]),
-        region: None,
+            region: None,
         };
         assert!(!a.exact_intersects(&b));
     }
@@ -581,7 +581,7 @@ mod tests {
                 half_height: 5.0,
             },
             pose: Pose::from_position([0.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         let cylinder = Geometry {
             shape: Shape::Cylinder {
@@ -589,7 +589,7 @@ mod tests {
                 half_height: 1.0,
             },
             pose: Pose::from_position([0.0, 0.0, 5.5]),
-        region: None,
+            region: None,
         };
         // AABBs overlap in Z: cone=[-5,5], cylinder=[4.5,6.5]
         assert!(cone.world_aabb().overlaps(&cylinder.world_aabb()));
@@ -603,12 +603,12 @@ mod tests {
         let a = Geometry {
             shape: Shape::Sphere { radius: 5.0 },
             pose: Pose::from_position([0.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         let b = Geometry {
             shape: Shape::Sphere { radius: 3.0 },
             pose: Pose::from_position([6.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         // Distance between centers = 6, sum of radii = 8, so they intersect
         assert!(a.exact_intersects(&b));
@@ -619,12 +619,12 @@ mod tests {
         let a = Geometry {
             shape: Shape::Sphere { radius: 2.0 },
             pose: Pose::from_position([0.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         let b = Geometry {
             shape: Shape::Sphere { radius: 2.0 },
             pose: Pose::from_position([10.0, 0.0, 0.0]),
-        region: None,
+            region: None,
         };
         // Distance between centers = 10, sum of radii = 4, so they don't intersect
         assert!(!a.exact_intersects(&b));

@@ -15,7 +15,7 @@ fn test_union_aabb() {
             },
         ]),
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     let aabb = geom.world_aabb();
     // Union: AABB should enclose both: [-2,-2,-5] to [2,2,5]
@@ -35,7 +35,7 @@ fn test_intersection_aabb() {
             },
         ]),
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     let aabb = geom.world_aabb();
     // Intersection: narrowest AABB = [-2,-2,-2] to [2,2,2]
@@ -55,7 +55,7 @@ fn test_subtract_aabb_conservative() {
             }),
         },
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     let aabb = geom.world_aabb();
     // Subtract: conservative AABB = A's AABB = [-5,-5,-5] to [5,5,5]
@@ -71,7 +71,7 @@ fn test_union_intersection_gjk() {
             half_extents: [2.0, 2.0, 2.0],
         },
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     let union = Geometry {
         shape: Shape::Union(vec![
@@ -83,7 +83,7 @@ fn test_union_intersection_gjk() {
             },
         ]),
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     assert!(union.exact_intersects(&geom_a));
 }
@@ -100,14 +100,14 @@ fn test_union_separated_gjk() {
             },
         ]),
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     let far = Geometry {
         shape: Shape::Cuboid {
             half_extents: [1.0, 1.0, 1.0],
         },
         pose: Pose::from_position([50.0, 50.0, 50.0]),
-    region: None,
+        region: None,
     };
     assert!(!union.exact_intersects(&far));
 }
@@ -126,13 +126,13 @@ fn test_intersection_all_children_must_intersect() {
             Shape::Sphere { radius: 3.0 },
         ]),
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     // Probe at x=2, y=0, z=0 (within both shapes) → true
     let probe_near = Geometry {
         shape: Shape::Sphere { radius: 0.5 },
         pose: Pose::from_position([2.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     assert!(intersection.exact_intersects(&probe_near));
 
@@ -140,7 +140,7 @@ fn test_intersection_all_children_must_intersect() {
     let probe_far = Geometry {
         shape: Shape::Sphere { radius: 0.5 },
         pose: Pose::from_position([4.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     assert!(!intersection.exact_intersects(&probe_far));
 }
@@ -158,13 +158,13 @@ fn test_subtract_overlap_with_a_not_b() {
             }),
         },
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     // Probe near edge (x=4): intersects A but not B → true
     let probe_edge = Geometry {
         shape: Shape::Sphere { radius: 0.5 },
         pose: Pose::from_position([4.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     assert!(subtract.exact_intersects(&probe_edge));
 
@@ -172,7 +172,7 @@ fn test_subtract_overlap_with_a_not_b() {
     let probe_center = Geometry {
         shape: Shape::Sphere { radius: 0.5 },
         pose: Pose::from_position([0.0, 0.0, 0.0]),
-    region: None,
+        region: None,
     };
     assert!(!subtract.exact_intersects(&probe_center));
 }

@@ -82,13 +82,8 @@ pub fn run_pipeline(input: &str) -> Result<PipelineResult, CpmlError> {
             barriers: &model.barriers,
             region_hierarchy: &model.region_hierarchy,
         };
-        let frame_diags = super::probe_check::check_probes(
-            kf.index,
-            kf.date,
-            &active,
-            &persistent_state,
-            &ctx,
-        );
+        let frame_diags =
+            super::probe_check::check_probes(kf.index, kf.date, &active, &persistent_state, &ctx);
         all_diagnostics.extend(frame_diags);
 
         // Update persistent state for next frame

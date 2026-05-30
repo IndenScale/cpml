@@ -55,7 +55,8 @@ pub fn check_probes(
     let mut diagnostics = Vec::new();
 
     // Build a flat list of all projections for blame tracing
-    let all_projections: Vec<&Projection> = ctx.all_activities
+    let all_projections: Vec<&Projection> = ctx
+        .all_activities
         .iter()
         .flat_map(|a| a.projections.iter())
         .collect();
@@ -74,7 +75,8 @@ pub fn check_probes(
         .collect();
 
     // Build series lookup: activity_id -> series_id
-    let series_map: HashMap<String, Option<String>> = ctx.all_activities
+    let series_map: HashMap<String, Option<String>> = ctx
+        .all_activities
         .iter()
         .map(|a| (a.id.clone(), a.series.clone()))
         .collect();

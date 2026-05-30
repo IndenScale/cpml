@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-echo "=== pre-commit: cargo clippy ==="
-cargo clippy -- -D warnings
-echo ""
-
-echo "=== pre-commit: cargo test ==="
-cargo test
-echo ""
-
-echo "=== pre-commit: cargo fmt --check ==="
+echo "==> cargo fmt --check"
 cargo fmt --check
-echo ""
 
-echo "All checks passed."
+echo "==> cargo clippy --all-targets -- -D warnings"
+cargo clippy --all-targets -- -D warnings
+
+echo "==> cargo test"
+cargo test
+
+echo "==> cargo build"
+RUSTFLAGS="-D warnings" cargo build
+
+echo "All checks passed ✓"

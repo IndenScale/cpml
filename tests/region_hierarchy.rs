@@ -74,7 +74,10 @@ activities:
         gte: 0
 "#;
     let errors = count_errors(input);
-    assert_eq!(errors, 1, "Without hierarchy, supply is invisible → shortfall");
+    assert_eq!(
+        errors, 1,
+        "Without hierarchy, supply is invisible → shortfall"
+    );
 }
 
 #[test]
@@ -127,7 +130,10 @@ activities:
         gte: 0
 "#;
     let errors = count_errors(input);
-    assert_eq!(errors, 0, "With hierarchy, supply (200) + consumption (-150) = 50 → passes");
+    assert_eq!(
+        errors, 0,
+        "With hierarchy, supply (200) + consumption (-150) = 50 → passes"
+    );
 }
 
 #[test]
@@ -180,5 +186,8 @@ activities:
         gte: 0
 "#;
     let errors = count_errors(input);
-    assert_eq!(errors, 1, "With hierarchy, supply (200) + consumption (-250) = -50 → shortfall");
+    assert_eq!(
+        errors, 1,
+        "With hierarchy, supply (200) + consumption (-250) = -50 → shortfall"
+    );
 }

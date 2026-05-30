@@ -23,10 +23,19 @@ impl<'de> Deserialize<'de> for GeometryDef {
         D: Deserializer<'de>,
     {
         const KNOWN_KEYS: &[&str] = &[
-            "id", "pose", "region",
+            "id",
+            "pose",
+            "region",
             // ShapeDef variant names (internally tagged, snake_case)
-            "aabb", "cuboid", "cylinder", "sphere", "hemisphere", "cone",
-            "union", "intersection", "subtract",
+            "aabb",
+            "cuboid",
+            "cylinder",
+            "sphere",
+            "hemisphere",
+            "cone",
+            "union",
+            "intersection",
+            "subtract",
         ];
 
         // Parse into generic YAML value first so we can inspect keys.
@@ -56,8 +65,7 @@ impl<'de> Deserialize<'de> for GeometryDef {
             shape: ShapeDef,
         }
 
-        let helper: Helper =
-            serde_yaml::from_value(value).map_err(de::Error::custom)?;
+        let helper: Helper = serde_yaml::from_value(value).map_err(de::Error::custom)?;
 
         Ok(GeometryDef {
             id: helper.id,

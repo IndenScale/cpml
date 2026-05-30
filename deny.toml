@@ -5,11 +5,11 @@
 all-features = true
 
 [advisories]
-vulnerability = "deny"
+vulnerability = "workspace"
 unmaintained = "workspace"
 unsound = "workspace"
-yanked = "deny"
-notice = "warn"
+yanked = "workspace"
+notice = "workspace"
 ignore = []
 
 [licenses]
